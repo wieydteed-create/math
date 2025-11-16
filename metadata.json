@@ -1,0 +1,5 @@
+{
+  "name": "AI 수학 공식 도우미",
+  "description": "학년을 선택하고 수학 공식을 입력하면 AI가 공식의 이름, 설명, 예시, 관련 개념을 알려주는 웹 애플리케이션입니다.",
+  "requestFramePermissions": []
+}
