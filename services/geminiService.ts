@@ -1,15 +1,9 @@
-
 import { GoogleGenAI } from "@google/genai";
 
-const API_KEY = process.env.API_KEY;
-
-if (!API_KEY) {
-  throw new Error("API_KEY environment variable not set");
-}
-
-const ai = new GoogleGenAI({ apiKey: API_KEY });
-
 export async function analyzeFormula(grade: string, formula: string): Promise<string> {
+  // Create a new instance for each call to ensure the latest API key is used.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
   const prompt = `
     너는 한국 학생들을 위한 친절하고 전문적인 수학 선생님이야.
     현재 '${grade}' 학생이 다음 공식에 대해 질문했어:
@@ -42,9 +36,10 @@ export async function analyzeFormula(grade: string, formula: string): Promise<st
     return response.text;
   } catch (error) {
     console.error("Error calling Gemini API:", error);
+    // Re-throw the error so the UI component can handle it (e.g., for key selection)
     if (error instanceof Error) {
-        return `API 호출 중 오류가 발생했습니다: ${error.message}`;
+        throw error;
     }
-    return "API 호출 중 알 수 없는 오류가 발생했습니다.";
+    throw new Error("API 호출 중 알 수 없는 오류가 발생했습니다.");
   }
 }

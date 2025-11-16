@@ -1,5 +1,4 @@
-
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { GRADE_LEVELS } from './constants';
 import { analyzeFormula } from './services/geminiService';
 
@@ -16,6 +15,32 @@ const App: React.FC = () => {
   const [response, setResponse] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [isKeySelected, setIsKeySelected] = useState<boolean>(false);
+
+  useEffect(() => {
+    const checkApiKey = async () => {
+      try {
+        const hasKey = await window.aistudio.hasSelectedApiKey();
+        setIsKeySelected(hasKey);
+      } catch (e) {
+        console.error("Error checking for API key:", e);
+        setIsKeySelected(false);
+      }
+    };
+    checkApiKey();
+  }, []);
+
+  const handleSelectKey = async () => {
+    try {
+      await window.aistudio.openSelectKey();
+      // Assume selection is successful to avoid race conditions and show the main app.
+      setIsKeySelected(true);
+      setError(null); // Clear previous errors
+    } catch (e) {
+      console.error("Error opening key selection:", e);
+      setError("API 키를 선택하는 중 오류가 발생했습니다.");
+    }
+  };
 
   const handleSubmit = useCallback(async (event: React.FormEvent) => {
     event.preventDefault();
@@ -31,7 +56,15 @@ const App: React.FC = () => {
       const result = await analyzeFormula(grade, formula);
       setResponse(result);
     } catch (e) {
-      setError('공식 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      if (e instanceof Error && e.message.includes('API key not valid')) {
+          setError('유효한 API 키가 아닙니다. 다른 키를 선택해주세요.');
+          setIsKeySelected(false);
+      } else if (e instanceof Error && e.message.includes('Requested entity was not found')) {
+        setError('유효한 API 키가 선택되지 않았습니다. 다시 선택해주세요.');
+        setIsKeySelected(false);
+      } else {
+        setError('공식 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      }
       console.error(e);
     } finally {
       setIsLoading(false);
@@ -82,6 +115,43 @@ const App: React.FC = () => {
     );
   };
   
+  if (!isKeySelected) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-4 text-slate-800">
+        <div className="w-full max-w-md text-center bg-white p-8 rounded-xl shadow-lg">
+          <h1 className="text-2xl font-bold text-slate-900">API 키를 선택해주세요</h1>
+          <p className="mt-4 text-slate-600">
+            AI 수학 공식 도우미를 사용하려면 Gemini API 키가 필요합니다. 아래 버튼을 눌러 API 키를 선택하거나 생성해주세요.
+          </p>
+          <p className="mt-2 text-sm text-slate-500">
+            API 사용량에 따라 요금이 부과될 수 있습니다. 자세한 내용은{' '}
+            <a 
+              href="https://ai.google.dev/gemini-api/docs/billing" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="font-medium text-indigo-600 hover:text-indigo-500"
+            >
+              Google AI Studio 결제 문서
+            </a>
+            를 참조하세요.
+          </p>
+          {error && (
+             <div className="mt-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg text-left" role="alert">
+                <p className="font-bold">오류</p>
+                <p>{error}</p>
+             </div>
+          )}
+          <button
+            onClick={handleSelectKey}
+            className="mt-6 w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            API 키 선택하기
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col items-center p-4 sm:p-6 lg:p-8 text-slate-800">
       <header className="text-center my-8">
